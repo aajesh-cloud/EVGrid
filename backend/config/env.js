@@ -78,7 +78,7 @@ export const env = Object.freeze({
   isProduction: nodeEnv === 'production',
   port: num(process.env.PORT, 5000),
   apiPrefix: process.env.API_PREFIX || '/api',
-  corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173')
+  corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173,https://ev-grid-pied.vercel.app')
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean),
