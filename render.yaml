@@ -1,0 +1,76 @@
+# ---------------------------------------------------------------------------
+# Render blueprint — EVGrid REST API (Node.js + Express + MySQL)
+#
+#   Render dashboard → New → Blueprint → select this repository.
+#
+# Only the API runs here; the frontend is deployed separately on Vercel
+# (see vercel.json). Every value marked `sync: false` is a secret or a
+# per-environment value: Render asks for it in the dashboard and it is never
+# written into this file or committed to Git.
+# ---------------------------------------------------------------------------
+services:
+  - type: web
+    name: evgrid-api
+    runtime: node
+    plan: free
+    # Pick the region closest to your hosted MySQL instance.
+    region: singapore
+    branch: main
+    autoDeploy: true
+    buildCommand: npm ci
+    # `npm run server` → node backend/server.js
+    startCommand: npm run server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render assigns PORT itself; the API reads process.env.PORT.
+      - key: API_PREFIX
+        value: /api
+
+      # --- Frontend origin allowed by CORS --------------------------------
+      # e.g. https://evgrid.vercel.app  (comma-separated for several origins)
+      - key: CORS_ORIGINS
+        sync: false
+
+      # --- Hosted MySQL credentials ---------------------------------------
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      # "require" (or "verify" + DB_SSL_CA) for a hosted MySQL that needs TLS.
+      - key: DB_SSL
+        sync: false
+      - key: DB_SSL_CA
+        sync: false
+
+      # --- Auth ------------------------------------------------------------
+      # Render generates a strong secret once; never reuse the local one.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 12h
+      - key: BCRYPT_ROUNDS
+        value: "10"
+
+      # --- Verification email (Gmail SMTP) --------------------------------
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: EVGrid
+      - key: MAIL_FROM
+        sync: false
