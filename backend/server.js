@@ -10,7 +10,7 @@
 
 import express from 'express';
 import cors from 'cors';
-import { env } from './config/env.js';
+import { env, normaliseOrigin } from './config/env.js';
 import { checkDatabase, closePool } from './config/db.js';
 import apiRoutes from './routes/index.js';
 import { notFound } from './middleware/notFound.js';
@@ -28,8 +28,14 @@ app.set('trust proxy', true);
 
 function isAllowedOrigin(origin) {
   if (!origin) return true; // same-origin, curl, server-to-server
-  if (env.corsOrigins.includes(origin)) return true;
-  if (!env.isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  const requested = normaliseOrigin(origin);
+  if (env.corsOrigins.includes(requested)) return true;
+  if (!env.isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(requested)) return true;
+  // Logged so a blocked request is visible in the host's logs instead of
+  // surfacing only as a vague "Cannot reach the EVGrid API" in the browser.
+  console.warn(
+    `[evgrid] CORS blocked ${requested} — allowed: ${env.corsOrigins.join(', ') || '(none)'}`
+  );
   return false;
 }
 

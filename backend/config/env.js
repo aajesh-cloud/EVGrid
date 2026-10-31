@@ -73,15 +73,59 @@ export const smtpConfig = Object.freeze({
   configured: Boolean(smtpUser && smtpPassword),
 });
 
+/**
+ * Browser origins that may call the API.
+ *
+ * `CORS_ORIGINS` is a comma-separated list supplied by the host (Render reads
+ * it from the dashboard). Every entry is normalised, so a trailing slash,
+ * surrounding quotes or mixed capitalisation — the usual dashboard typos —
+ * no longer silently reject requests.
+ *
+ * The default frontend is *always* in the allow-list. A stale or malformed
+ * `CORS_ORIGINS` would otherwise leave the list empty or pointing at the wrong
+ * host, and every browser call would fail with "Cannot reach the EVGrid API"
+ * while the API itself is perfectly healthy.
+ */
+const DEFAULT_CORS_ORIGINS = [
+  'https://ev-grid-pied.vercel.app',
+  ...(nodeEnv === 'production' ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173']),
+];
+
+/** ` "https://Example.com/" ` -> `https://example.com` */
+export function normaliseOrigin(value) {
+  const trimmed = String(value ?? '').trim().replace(/^["']+|["']+$/g, '');
+  return trimmed ? trimmed.replace(/\/+$/, '').toLowerCase() : '';
+}
+
+const corsOrigins = [
+  ...new Set(
+    [
+      ...(process.env.CORS_ORIGINS || '').split(',').map(normaliseOrigin),
+      ...DEFAULT_CORS_ORIGINS.map(normaliseOrigin),
+    ].filter(Boolean)
+  ),
+];
+
+if (nodeEnv === 'production' && !(process.env.CORS_ORIGINS || '').trim()) {
+  console.warn(
+    '[evgrid] CORS_ORIGINS is not set — using the built-in production origins: ' +
+      corsOrigins.join(', ')
+  );
+}
+
 export const env = Object.freeze({
   nodeEnv,
   isProduction: nodeEnv === 'production',
   port: num(process.env.PORT, 5000),
   apiPrefix: process.env.API_PREFIX || '/api',
+<<<<<<< HEAD
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173,https://ev-grid-pied.vercel.app')
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean),
+=======
+  corsOrigins,
+>>>>>>> 508465e (Fix production CORS configuration)
   jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '12h',
   otpLength: num(process.env.OTP_LENGTH, 6),
