@@ -184,14 +184,24 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   const email = requireEmail(req.body?.email);
   const otp = requireString(req.body?.otp, 'otp', { min: env.otpLength, max: env.otpLength });
 
-  const user = await queryOne('SELECT * FROM `users` WHERE `email` = ? LIMIT 1', [email]);
+  // The expiry is compared with MySQL's own clock (`NOW()`) instead of a
+  // JavaScript Date. `NOW()` writes the DATETIME in the database session's
+  // timezone, while the driver parses it back in the API process's timezone
+  // (`timezone: 'local'` in config/env.js); whenever those two differ, a
+  // freshly issued code was read as hours in the past and rejected as
+  // expired. Keeping both sides on the database clock removes the mismatch.
+  const user = await queryOne(
+    `SELECT *,
+            (\`otp_expires_at\` IS NOT NULL AND \`otp_expires_at\` > NOW()) AS \`otp_valid\`
+       FROM \`users\` WHERE \`email\` = ? LIMIT 1`,
+    [email]
+  );
   if (!user) throw ApiError.badRequest('No pending registration was found for this email.');
 
   if (!user.otp_code) {
     throw ApiError.badRequest('There is no active verification code. Request a new one.');
   }
-  const expiresAt = user.otp_expires_at ? new Date(user.otp_expires_at) : null;
-  if (!expiresAt || expiresAt.getTime() < Date.now()) {
+  if (!user.otp_valid) {
     throw new ApiError(400, 'This verification code has expired. Request a new one.', {
       code: 'otp_expired',
     });
